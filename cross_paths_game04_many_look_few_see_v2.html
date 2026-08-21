@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cross Paths — Many Look, Few See</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0b0907;color:#fff}
+.screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;text-align:center}
+.screen.active{display:flex}
+.card{width:min(720px,100%);background:#17120e;border:1px solid #6a543a;border-radius:28px;padding:30px;box-shadow:0 25px 70px rgba(0,0,0,.45)}
+.eyebrow{letter-spacing:.28em;font-weight:800;font-size:12px;color:#e7bd7b;margin-bottom:20px}
+h1{font-size:clamp(42px,10vw,78px);line-height:.92;margin:0 0 20px;text-transform:uppercase}
+p{font-size:18px;line-height:1.55;color:#eee0cf}
+button{font:inherit;font-weight:800;border:0;border-radius:16px;padding:17px 20px;cursor:pointer}
+.primary{background:#d59a43;color:#20150b;width:100%;margin-top:18px}
+.imageStage{padding:0;background:#000;position:relative}
+.imageStage img{width:100vw;height:100vh;object-fit:contain;display:block}
+.count{position:absolute;right:24px;bottom:24px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.72);border:2px solid #e7bd7b;font-size:30px;font-weight:900}
+.progress{font-size:13px;letter-spacing:.18em;color:#e7bd7b;font-weight:800;margin-bottom:14px}
+.question{font-size:clamp(28px,7vw,46px);line-height:1.05;margin:0 0 24px}
+.options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.option{background:#f5eee4;color:#251a12;min-height:64px}
+.option.correct{background:#d59a43}
+.option.wrong{opacity:.42}
+.feedback{min-height:28px;margin-top:18px;font-weight:800;color:#e7bd7b}
+.reveal img{width:100%;max-height:48vh;object-fit:contain;border-radius:18px;background:#000;margin-bottom:16px}
+.reveal .card{padding:18px}
+.score{font-size:76px;font-weight:900;color:#e7bd7b;margin:10px 0}
+.small{font-size:14px;color:#cdbda9}
+@media(max-width:520px){.options{grid-template-columns:1fr}.card{padding:22px;border-radius:22px}}
+</style>
+</head>
+<body>
+
+<section id="intro" class="screen active">
+  <div class="card">
+    <div class="eyebrow">CROSS PATHS • PREMIERE GAME 04</div>
+    <h1>Many Look.<br>Few See.</h1>
+    <p>You will see a series of images from <b>Cross Paths</b>.</p>
+    <p><b>Look carefully.</b></p>
+    <button id="readyBtn" class="primary">READY?</button>
+  </div>
+</section>
+
+<section id="image" class="screen imageStage">
+  <img id="shot" alt="Cross Paths film still">
+  <div id="count" class="count">5</div>
+</section>
+
+<section id="quiz" class="screen">
+  <div class="card">
+    <div id="progress" class="progress"></div>
+    <h2 id="question" class="question"></h2>
+    <div id="options" class="options"></div>
+    <div id="feedback" class="feedback"></div>
+  </div>
+</section>
+
+<section id="reveal" class="screen reveal">
+  <div class="card">
+    <img id="revealImg" alt="Cross Paths answer reveal">
+    <div class="eyebrow" style="margin:4px 0 8px">LOOK AGAIN</div>
+    <h2 id="revealText" style="margin:0 0 10px"></h2>
+    <button id="nextBtn" class="primary">NEXT</button>
+  </div>
+</section>
+
+<section id="end" class="screen">
+  <div class="card">
+    <div class="eyebrow">CROSS PATHS • PREMIERE GAME 04</div>
+    <div id="score" class="score"></div>
+    <h1 id="rating" style="font-size:clamp(34px,8vw,64px)"></h1>
+    <p id="ending"></p>
+    <button id="againBtn" class="primary">PLAY AGAIN</button>
+    <p class="small">CROSS PATHS • PREMIERE EXPERIENCE</p>
+  </div>
+</section>
+
+<script>
+const data = [{"img": "game04_01_forest.jpg", "q": "What colour was her dress?", "opts": ["White", "Green", "Cream", "Yellow"], "ans": 0}, {"img": "game04_02_car.jpg", "q": "What colour was his clothing?", "opts": ["Blue", "Black", "Grey", "Brown"], "ans": 1}, {"img": "game04_03_singer.jpg", "q": "Which piece of jewellery was she wearing on her nose?", "opts": ["Ring", "Stud", "Chain", "None"], "ans": 0}, {"img": "game04_04_cross.jpg", "q": "What shape was visible on the wall behind her?", "opts": ["Circle", "Cross", "Star", "Heart"], "ans": 1}, {"img": "game04_05_glasses.jpg", "q": "What pattern was on his shirt?", "opts": ["Stripes", "Checks", "Plain", "Floral"], "ans": 1}, {"img": "game04_06_sale.jpg", "q": "What word appeared above the building entrance?", "opts": ["OPEN", "SALE", "MARKET", "SHOP"], "ans": 1}, {"img": "game04_07_red.jpg", "q": "How many framed documents were visible behind her?", "opts": ["2", "3", "4", "5"], "ans": 1}];
+let i = 0, score = 0, locked = false, timer = null;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame() {
+  i = 0;
+  score = 0;
+  showImage();
+}
+
+function showImage() {
+  locked = false;
+  const d = data[i];
+  const shot = document.getElementById('shot');
+  shot.src = d.img;
+  show('image');
+
+  let n = 5;
+  const c = document.getElementById('count');
+  c.textContent = n;
+
+  clearInterval(timer);
+  timer = setInterval(() => {
+    n -= 1;
+    if (n > 0) {
+      c.textContent = n;
+    } else {
+      clearInterval(timer);
+      showQuestion();
+    }
+  }, 1000);
+}
+
+function showQuestion() {
+  const d = data[i];
+  document.getElementById('progress').textContent = `IMAGE ${i+1} OF ${data.length}`;
+  document.getElementById('question').textContent = d.q;
+  document.getElementById('feedback').textContent = '';
+
+  const box = document.getElementById('options');
+  box.innerHTML = '';
+
+  d.opts.forEach((text, k) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = text;
+    btn.addEventListener('click', () => answer(k, btn));
+    box.appendChild(btn);
+  });
+
+  show('quiz');
+}
+
+function answer(k, btn) {
+  if (locked) return;
+  locked = true;
+
+  const d = data[i];
+  const buttons = [...document.querySelectorAll('.option')];
+  buttons[d.ans].classList.add('correct');
+
+  if (k === d.ans) {
+    score += 1;
+    document.getElementById('feedback').textContent = 'You saw it. 👁️';
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'It was right there…';
+  }
+
+  setTimeout(() => {
+    document.getElementById('revealImg').src = d.img;
+    document.getElementById('revealText').textContent = `Answer: ${d.opts[d.ans]}`;
+    show('reveal');
+  }, 700);
+}
+
+function nextRound() {
+  i += 1;
+  if (i < data.length) showImage();
+  else finish();
+}
+
+function finish() {
+  document.getElementById('score').textContent = `${score} / ${data.length}`;
+
+  let rating, ending;
+  if (score === 7) {
+    rating = 'YOU REALLY SEE 👁️';
+    ending = 'Every detail found its way to you.';
+  } else if (score >= 5) {
+    rating = 'SHARP EYES';
+    ending = 'You noticed what many would miss.';
+  } else if (score >= 3) {
+    rating = 'YOU LOOKED… BUT DID YOU SEE?';
+    ending = 'Sometimes the smallest details carry the biggest meaning.';
+  } else {
+    rating = 'MANY LOOK. FEW SEE.';
+    ending = 'Look again. There is always more than what first meets the eye.';
+  }
+
+  document.getElementById('rating').textContent = rating;
+  document.getElementById('ending').textContent = ending;
+  show('end');
+}
+
+document.getElementById('readyBtn').addEventListener('click', startGame);
+document.getElementById('nextBtn').addEventListener('click', nextRound);
+document.getElementById('againBtn').addEventListener('click', () => location.reload());
+</script>
+</body>
+</html>
