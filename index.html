@@ -62,12 +62,12 @@ h1{font-size:clamp(42px,11vw,70px);line-height:.95;margin:12px 0 10px}
  <div class="kicker">Cross Paths • Premiere Experience</div>
  <h1>Welcome</h1>
  <p>Everything you need for tonight’s <strong>Cross Paths</strong> premiere — the programme and four interactive games, all in one place.</p>
- <a class="programBtn" href="#programme">VIEW TONIGHT’S PROGRAMME ↓</a>
+ <button class="programToggle" id="programToggleTop" type="button">📅 VIEW TONIGHT’S PROGRAMME ↓</button>
 </section>
 
 <section id="programme">
  <div class="sectionTitle"><small>11 September 2026 • Kuvakukko Cinema, Kuopio</small><h2>Tonight’s Programme</h2></div>
- <div class="program"><div class="row"><div class="time">17:00–17:45</div><div class="event">Arrival, Red Carpet & Photos</div></div>
+ <div class="programWrap" id="programWrap"><div class="program"><div class="row"><div class="time">17:00–17:45</div><div class="event">Arrival, Red Carpet & Photos</div></div>
 <div class="row"><div class="time">17:45–17:50</div><div class="event">Host Welcome</div></div>
 <div class="row"><div class="time">17:50–17:55</div><div class="event">Opening Speech — City of Kuopio</div></div>
 <div class="row"><div class="time">17:55–18:00</div><div class="event">Director’s Welcome</div></div>
@@ -75,7 +75,7 @@ h1{font-size:clamp(42px,11vw,70px);line-height:.95;margin:12px 0 10px}
 <div class="row"><div class="time">19:00–19:10</div><div class="event">Cast & Crew Recognition</div></div>
 <div class="row"><div class="time">19:10–19:40</div><div class="event">Audience Q&A & Interaction</div></div>
 <div class="row"><div class="time">19:40–19:50</div><div class="event">Director’s Thanks & Vision</div></div>
-<div class="row"><div class="time">19:50–20:30</div><div class="event">Networking</div></div></div>
+<div class="row"><div class="time">19:50–20:30</div><div class="event">Networking</div></div></div><button class="programToggle" id="programClose" type="button">CLOSE PROGRAMME ↑</button></div>
 </section>
 
 <section id="games">
@@ -107,5 +107,26 @@ h1{font-size:clamp(42px,11vw,70px);line-height:.95;margin:12px 0 10px}
 <div class="note"><strong>One QR code. One premiere experience.</strong><br>Return here anytime to check the programme or choose another game.</div>
 <div class="footer">CROSS PATHS • PREMIERE EXPERIENCE</div>
 </main>
+
+<script>
+const programme = document.getElementById('programWrap');
+const openBtn = document.getElementById('programToggleTop');
+const closeBtn = document.getElementById('programClose');
+
+openBtn.addEventListener('click', () => {
+  programme.classList.add('open');
+  openBtn.textContent = '📅 PROGRAMME OPEN';
+  setTimeout(() => {
+    document.getElementById('programme').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 50);
+});
+
+closeBtn.addEventListener('click', () => {
+  programme.classList.remove('open');
+  openBtn.textContent = '📅 VIEW TONIGHT’S PROGRAMME ↓';
+  openBtn.scrollIntoView({behavior:'smooth', block:'center'});
+});
+</script>
+
 </body>
 </html>
