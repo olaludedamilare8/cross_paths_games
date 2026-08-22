@@ -18,6 +18,12 @@ padding:14px;background:#4b2514;color:#fff;font-weight:800;font-size:15px}#resul
 .badge{display:inline-block;background:#e7cfaa;border-radius:999px;padding:8px 13px;font-weight:900;margin:6px 0 14px}
 .restart{width:100%;border:0;border-radius:13px;padding:14px;background:#d69a48;color:#28160d;font-weight:900}
 .note{font-size:14px;line-height:1.45;color:#67584c}.footer{text-align:center;font-size:12px;text-shadow:0 2px 8px #000;color:#fff1d6;margin-top:16px}
+
+.lbbox{display:none;margin-top:14px;padding:14px;border-radius:14px;background:#f0dfc4;text-align:left}
+.lbbox h3{margin:0 0 6px;font-size:16px}.lbbox p{margin:0 0 10px;font-size:13px;color:#67584c}
+.lbrow{display:grid;grid-template-columns:1fr auto;gap:8px}.lbrow input{min-width:0;border:1px solid #cdb897;border-radius:11px;padding:12px;font:inherit;background:#fffaf1;color:#25170f}
+.lbrow button{border:0;border-radius:11px;padding:12px 14px;background:#4b2514;color:#fff;font-weight:800}#lbstatus{margin-top:9px;font-size:12px;font-weight:700;min-height:16px}
+@media(max-width:480px){.lbrow{grid-template-columns:1fr}.lbrow button{width:100%}}
 </style></head><body><div class="wrap">
 <header><div class="kicker">Cross Paths • Premiere Game 03</div><h1>Premiere Quiz</h1><p>How much do you know before our paths cross?</p></header>
 <section class="card" id="game">
@@ -25,11 +31,20 @@ padding:14px;background:#4b2514;color:#fff;font-weight:800;font-size:15px}#resul
 <h2 id="question"></h2><div class="answers" id="answers"></div><div id="feedback"></div><button id="next">NEXT QUESTION →</button>
 </section>
 <section class="card" id="result"><div>YOUR FINAL SCORE</div><div class="big" id="finalScore"></div><div class="badge" id="badge"></div>
-<p class="note" id="closing"></p><button class="restart" onclick="restart()">PLAY AGAIN</button></section>
+<p class="note" id="closing"></p>
+<div class="lbbox" id="lbbox"><h3>🏆 Join the Premiere Leaderboard</h3>
+<p>Enter a display name to submit your quiz score and completion time.</p>
+<div class="lbrow"><input id="playerName" maxlength="24" placeholder="Your display name" autocomplete="nickname"><button id="submitScoreBtn" type="button">SUBMIT SCORE</button></div>
+<div id="lbstatus"></div></div>
+<button class="restart" onclick="restart()">PLAY AGAIN</button></section>
 <div class="footer">CROSS PATHS • PREMIERE EXPERIENCE</div></div>
 <script>
 const QUESTIONS=[{"q": "In which Finnish city was Cross Paths primarily filmed?", "a": ["Helsinki", "Tampere", "Kuopio", "Oulu"], "correct": 2}, {"q": "Cross Paths was primarily created through what kind of production?", "a": ["Major studio production", "Independent volunteer-driven production", "Television production", "Film-school assignment"], "correct": 1}, {"q": "Approximately how many people were involved across the cast and crew?", "a": ["About 20", "About 40", "About 60", "More than 80"], "correct": 3}, {"q": "What is at the heart of Cross Paths?", "a": ["Revenge", "Competition", "Compassion", "Mystery"], "correct": 2}, {"q": "Which phrase closely represents the philosophy behind the film?", "a": ["Every road leads home", "Many look, but few see", "Tomorrow is another day", "Nothing happens by chance"], "correct": 1}, {"q": "Cross Paths was created by a team best described as\u2026", "a": ["Entirely Finnish", "Entirely Nigerian", "Multicultural", "Professional actors only"], "correct": 2}, {"q": "Which of these is one of the major themes explored in Cross Paths?", "a": ["Belonging", "Treasure hunting", "Time travel", "Competition"], "correct": 0}, {"q": "Where is tonight\u2019s Cross Paths premiere taking place?", "a": ["A theatre in Helsinki", "Kuvakukko Cinema", "An outdoor park", "A television studio"], "correct": 1}, {"q": "What kind of journey does the title Cross Paths suggest?", "a": ["Lives and experiences meeting", "A racing competition", "A road-trip adventure", "A detective investigation"], "correct": 0}, {"q": "Before the film begins, what do YOU think \u201cCross Paths\u201d means?", "a": ["People entering one another\u2019s lives", "Learning to truly see others", "Unexpected human connections", "All of the above"], "correct": 3, "reflection": true}];
 let current=0,score=0,answered=false;
+let scoreSubmitted=false;
+let gameStartedAt=Date.now();
+const SUPABASE_URL='https://ewiyaicfimbcofchkeer.supabase.co';
+const SUPABASE_KEY='sb_publishable_fKLvMzigCpGlGdO-yRx36w_bMNlT0IM';
 const qEl=document.getElementById('question'),aEl=document.getElementById('answers'),fb=document.getElementById('feedback'),next=document.getElementById('next');
 function render(){
  answered=false;const q=QUESTIONS[current];
@@ -54,8 +69,27 @@ function finish(){
  let badge=score>=9?'CROSS PATHS INSIDER':score>=7?'PATH FINDER':score>=5?'CURIOUS TRAVELLER':'THE JOURNEY BEGINS';
  document.getElementById('badge').textContent=badge;
  document.getElementById('closing').textContent='Now keep your final answer in mind. After the screening, ask yourself: did the meaning of “Cross Paths” change for you?';
+ document.getElementById('lbbox').style.display='block';
  window.scrollTo({top:0,behavior:'smooth'});
 }
-function restart(){current=0;score=0;document.getElementById('game').style.display='block';document.getElementById('result').style.display='none';render();}
+function restart(){current=0;score=0;gameStartedAt=Date.now();
+ document.getElementById('lbbox').style.display='none';document.getElementById('game').style.display='block';document.getElementById('result').style.display='none';render();}
 render();
+
+async function submitLeaderboardScore(){
+ if(scoreSubmitted)return;
+ const input=document.getElementById('playerName'),status=document.getElementById('lbstatus'),btn=document.getElementById('submitScoreBtn');
+ const name=input.value.trim().replace(/\s+/g,' ').slice(0,24);
+ if(name.length<2){status.textContent='Please enter a display name with at least 2 characters.';return;}
+ const elapsed=Math.max(1,Math.round((Date.now()-gameStartedAt)/1000));
+ const points=Math.round((score/QUESTIONS.length)*100);
+ btn.disabled=true;btn.textContent='SUBMITTING…';status.textContent='';
+ try{
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/Leaderboard`,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({player_name:name,game:'Premiere Quiz',score:points,time_seconds:elapsed})});
+  if(!res.ok)throw new Error(await res.text());
+  scoreSubmitted=true;status.textContent=`✅ ${points} points submitted to the Cross Paths leaderboard!`;btn.textContent='SUBMITTED ✓';input.disabled=true;
+ }catch(e){console.error(e);status.textContent='Could not submit right now. Please check your connection and try again.';btn.disabled=false;btn.textContent='SUBMIT SCORE';}
+}
+document.getElementById('submitScoreBtn').addEventListener('click',submitLeaderboardScore);
+
 </script></body></html>
