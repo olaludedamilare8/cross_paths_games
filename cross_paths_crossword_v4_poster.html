@@ -85,12 +85,34 @@ document.getElementById('lbbox').style.display='block';
 document.getElementById('lbstatus').textContent=scoreSubmitted?'Score already submitted for this play.':'';
 }
 
+
+const PLAYER_NAME_KEY='crossPathsPlayerName';
+
+function loadSavedPlayerName(){
+  const saved=(localStorage.getItem(PLAYER_NAME_KEY)||'').trim();
+  const input=document.getElementById('playerName');
+  if(saved && input){
+    input.value=saved;
+  }
+}
+
+function rememberPlayerName(name){
+  try{
+    localStorage.setItem(PLAYER_NAME_KEY,name);
+  }catch(e){
+    console.warn('Could not save display name locally.', e);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', loadSavedPlayerName);
+
 async function submitLeaderboardScore(){
  if(scoreSubmitted)return;
  const input=document.getElementById('playerName');
  const status=document.getElementById('lbstatus');
  const btn=document.getElementById('submitScoreBtn');
  const name=input.value.trim().replace(/\s+/g,' ').slice(0,24);
+  if(name.length>=2) rememberPlayerName(name);
  if(name.length<2){status.textContent='Please enter a display name with at least 2 characters.';return;}
  const elapsed=Math.max(1,Math.round((Date.now()-gameStartedAt)/1000));
  btn.disabled=true;btn.textContent='SUBMITTING…';status.textContent='';
