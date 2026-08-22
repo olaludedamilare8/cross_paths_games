@@ -29,7 +29,15 @@ button{font:inherit;font-weight:800;border:0;border-radius:16px;padding:17px 20p
 .reveal .card{padding:18px}
 .score{font-size:76px;font-weight:900;color:#e7bd7b;margin:10px 0}
 .small{font-size:14px;color:#cdbda9}
+.lbbox{display:none;margin-top:18px;padding:14px;border-radius:14px;background:#f0dfc4;text-align:left;color:#25170f}
+.lbbox h3{margin:0 0 6px;font-size:16px}
+.lbbox p{margin:0 0 10px;font-size:13px;color:#67584c;line-height:1.4}
+.lbrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.lbrow input{min-width:0;border:1px solid #cdb897;border-radius:11px;padding:12px;font:inherit;background:#fffaf1;color:#25170f}
+.lbrow button{border:0;border-radius:11px;padding:12px 14px;background:#4b2514;color:#fff;font-weight:800}
+#lbstatus{margin-top:9px;font-size:12px;font-weight:700;min-height:16px}
 @media(max-width:520px){.options{grid-template-columns:1fr}.card{padding:22px;border-radius:22px}}
+@media(max-width:480px){.lbrow{grid-template-columns:1fr}.lbrow button{width:100%}}
 </style>
 </head>
 <body>
@@ -73,6 +81,17 @@ button{font:inherit;font-weight:800;border:0;border-radius:16px;padding:17px 20p
     <div id="score" class="score"></div>
     <h1 id="rating" style="font-size:clamp(34px,8vw,64px)"></h1>
     <p id="ending"></p>
+
+    <div class="lbbox" id="lbbox">
+      <h3>🏆 Join the Premiere Leaderboard</h3>
+      <p>Enter a display name to submit your observation score and completion time.</p>
+      <div class="lbrow">
+        <input id="playerName" maxlength="24" placeholder="Your display name" autocomplete="nickname">
+        <button id="submitScoreBtn" type="button">SUBMIT SCORE</button>
+      </div>
+      <div id="lbstatus"></div>
+    </div>
+
     <button id="againBtn" class="primary">PLAY AGAIN</button>
     <p class="small">CROSS PATHS • PREMIERE EXPERIENCE</p>
   </div>
@@ -81,6 +100,11 @@ button{font:inherit;font-weight:800;border:0;border-radius:16px;padding:17px 20p
 <script>
 const data = [{"img": "game04_01_forest.jpg", "q": "What colour was her dress?", "opts": ["White", "Green", "Cream", "Yellow"], "ans": 0}, {"img": "game04_02_car.jpg", "q": "What colour was his clothing?", "opts": ["Blue", "Black", "Grey", "Brown"], "ans": 1}, {"img": "game04_03_singer.jpg", "q": "Which piece of jewellery was she wearing on her nose?", "opts": ["Ring", "Stud", "Chain", "None"], "ans": 0}, {"img": "game04_04_cross.jpg", "q": "What shape was visible on the wall behind her?", "opts": ["Circle", "Cross", "Star", "Heart"], "ans": 1}, {"img": "game04_05_glasses.jpg", "q": "What pattern was on his shirt?", "opts": ["Stripes", "Checks", "Plain", "Floral"], "ans": 1}, {"img": "game04_06_sale.jpg", "q": "What word appeared above the building entrance?", "opts": ["OPEN", "SALE", "MARKET", "SHOP"], "ans": 1}, {"img": "game04_07_red.jpg", "q": "How many framed documents were visible behind her?", "opts": ["2", "3", "4", "5"], "ans": 1}];
 let i = 0, score = 0, locked = false, timer = null;
+let scoreSubmitted = false;
+let gameStartedAt = null;
+
+const SUPABASE_URL='https://ewiyaicfimbcofchkeer.supabase.co';
+const SUPABASE_KEY='sb_publishable_fKLvMzigCpGlGdO-yRx36w_bMNlT0IM';
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -90,6 +114,15 @@ function show(id) {
 function startGame() {
   i = 0;
   score = 0;
+  scoreSubmitted = false;
+  gameStartedAt = Date.now();
+  document.getElementById('lbbox').style.display='none';
+  document.getElementById('lbstatus').textContent='';
+  document.getElementById('playerName').value='';
+  document.getElementById('playerName').disabled=false;
+  const sb=document.getElementById('submitScoreBtn');
+  sb.disabled=false;
+  sb.textContent='SUBMIT SCORE';
   showImage();
 }
 
@@ -185,12 +218,65 @@ function finish() {
 
   document.getElementById('rating').textContent = rating;
   document.getElementById('ending').textContent = ending;
+  document.getElementById('lbbox').style.display='block';
   show('end');
+}
+
+async function submitLeaderboardScore() {
+  if(scoreSubmitted) return;
+
+  const input=document.getElementById('playerName');
+  const status=document.getElementById('lbstatus');
+  const btn=document.getElementById('submitScoreBtn');
+  const name=input.value.trim().replace(/\s+/g,' ').slice(0,24);
+
+  if(name.length<2) {
+    status.textContent='Please enter a display name with at least 2 characters.';
+    return;
+  }
+
+  const points=Math.round((score/data.length)*100);
+  const elapsed=Math.max(1,Math.round((Date.now()-gameStartedAt)/1000));
+
+  btn.disabled=true;
+  btn.textContent='SUBMITTING…';
+  status.textContent='';
+
+  try {
+    const res=await fetch(`${SUPABASE_URL}/rest/v1/Leaderboard`, {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':`Bearer ${SUPABASE_KEY}`,
+        'Content-Type':'application/json',
+        'Prefer':'return=minimal'
+      },
+      body:JSON.stringify({
+        player_name:name,
+        game:'Many Look. Few See.',
+        score:points,
+        time_seconds:elapsed
+      })
+    });
+
+    if(!res.ok) throw new Error(await res.text());
+
+    scoreSubmitted=true;
+    status.textContent=`✅ ${points} points submitted to the Cross Paths leaderboard!`;
+    btn.textContent='SUBMITTED ✓';
+    input.disabled=true;
+  } catch(err) {
+    console.error(err);
+    status.textContent='Could not submit right now. Please check your connection and try again.';
+    btn.disabled=false;
+    btn.textContent='SUBMIT SCORE';
+  }
 }
 
 document.getElementById('readyBtn').addEventListener('click', startGame);
 document.getElementById('nextBtn').addEventListener('click', nextRound);
 document.getElementById('againBtn').addEventListener('click', () => location.reload());
+document.getElementById('submitScoreBtn').addEventListener('click', submitLeaderboardScore);
 </script>
 </body>
 </html>
