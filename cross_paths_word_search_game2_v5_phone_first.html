@@ -217,6 +217,27 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   document.getElementById('lbbox').style.display='none';
 });
 
+
+const PLAYER_NAME_KEY='crossPathsPlayerName';
+
+function loadSavedPlayerName(){
+  const saved=(localStorage.getItem(PLAYER_NAME_KEY)||'').trim();
+  const input=document.getElementById('playerName');
+  if(saved && input){
+    input.value=saved;
+  }
+}
+
+function rememberPlayerName(name){
+  try{
+    localStorage.setItem(PLAYER_NAME_KEY,name);
+  }catch(e){
+    console.warn('Could not save display name locally.', e);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', loadSavedPlayerName);
+
 async function submitLeaderboardScore(){
   if(scoreSubmitted) return;
 
