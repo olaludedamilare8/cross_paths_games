@@ -41,6 +41,15 @@ header p{margin:0;color:#fff0d5}
 .reset{background:#e4d8c7;color:#28160d}
 #message{text-align:center;font-weight:800;margin-top:12px;min-height:38px;line-height:1.35}
 .footer{text-align:center;font-size:12px;text-shadow:0 2px 8px #000;color:#fff1d6;margin-top:16px}
+
+.lbbox{display:none;margin-top:14px;padding:14px;border-radius:14px;background:#f0dfc4;text-align:left;color:#25170f}
+.lbbox h3{margin:0 0 6px;font-size:16px}
+.lbbox p{margin:0 0 10px;font-size:13px;color:#67584c;line-height:1.4}
+.lbrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.lbrow input{min-width:0;border:1px solid #cdb897;border-radius:11px;padding:12px;font:inherit;background:#fffaf1;color:#25170f}
+.lbrow button{border:0;border-radius:11px;padding:12px 14px;background:#4b2514;color:#fff;font-weight:800}
+#lbstatus{margin-top:9px;font-size:12px;font-weight:700;min-height:16px}
+@media(max-width:480px){.lbrow{grid-template-columns:1fr}.lbrow button{width:100%}}
 </style>
 </head>
 <body>
@@ -63,6 +72,15 @@ header p{margin:0;color:#fff0d5}
     <button class="action reset" type="button" id="resetBtn">RESET</button>
   </div>
   <div id="message">Tap any letter to start.</div>
+<div class="lbbox" id="lbbox">
+  <h3>🏆 Join the Premiere Leaderboard</h3>
+  <p>You found every hidden word. Enter a display name to submit your score and completion time.</p>
+  <div class="lbrow">
+    <input id="playerName" maxlength="24" placeholder="Your display name" autocomplete="nickname">
+    <button id="submitScoreBtn" type="button">SUBMIT SCORE</button>
+  </div>
+  <div id="lbstatus"></div>
+</div>
 </section>
 
 <section class="card"><div class="words"><span class="word" data-word="BELONGING">BELONGING</span><span class="word" data-word="FAMILY">FAMILY</span><span class="word" data-word="HOPE">HOPE</span><span class="word" data-word="COMPASSION">COMPASSION</span><span class="word" data-word="HEALING">HEALING</span><span class="word" data-word="IDENTITY">IDENTITY</span><span class="word" data-word="RESILIENCE">RESILIENCE</span><span class="word" data-word="THERAPY">THERAPY</span><span class="word" data-word="FINLAND">FINLAND</span><span class="word" data-word="CULTURE">CULTURE</span><span class="word" data-word="COMMUNITY">COMMUNITY</span><span class="word" data-word="EMPATHY">EMPATHY</span><span class="word" data-word="LOVE">LOVE</span><span class="word" data-word="PATH">PATH</span><span class="word" data-word="CROSSPATHS">CROSS PATHS</span></div></section>
@@ -74,6 +92,10 @@ const PATHS = {"COMPASSION": ["9,8", "8,8", "7,8", "6,8", "5,8", "4,8", "3,8", "
 let startKey = null;
 let found = new Set();
 let lastTouch = 0;
+let scoreSubmitted = false;
+const gameStartedAt = Date.now();
+const SUPABASE_URL = 'https://ewiyaicfimbcofchkeer.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fKLvMzigCpGlGdO-yRx36w_bMNlT0IM';
 
 function coords(k) {
   return k.split(',').map(Number);
@@ -120,6 +142,10 @@ function completeWord(word) {
     found.size===Object.keys(PATHS).length
       ? '🎉 You found every path!'
       : `✓ ${word.replace('CROSSPATHS','CROSS PATHS')} found!`;
+
+  if (found.size===Object.keys(PATHS).length) {
+    document.getElementById('lbbox').style.display='block';
+  }
 }
 function handleLetter(el) {
   const k = el.dataset.key;
@@ -188,7 +214,60 @@ document.getElementById('resetBtn').addEventListener('click',()=>{
   document.querySelectorAll('.word').forEach(el=>el.classList.remove('found'));
   document.getElementById('count').textContent='0 / 15';
   document.getElementById('message').textContent='Tap any letter to start.';
+  document.getElementById('lbbox').style.display='none';
 });
+
+async function submitLeaderboardScore(){
+  if(scoreSubmitted) return;
+
+  const input = document.getElementById('playerName');
+  const status = document.getElementById('lbstatus');
+  const btn = document.getElementById('submitScoreBtn');
+  const name = input.value.trim().replace(/\s+/g,' ').slice(0,24);
+
+  if(name.length < 2){
+    status.textContent='Please enter a display name with at least 2 characters.';
+    return;
+  }
+
+  const elapsed = Math.max(1, Math.round((Date.now()-gameStartedAt)/1000));
+  btn.disabled=true;
+  btn.textContent='SUBMITTING…';
+  status.textContent='';
+
+  try{
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/Leaderboard`, {
+      method:'POST',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':`Bearer ${SUPABASE_KEY}`,
+        'Content-Type':'application/json',
+        'Prefer':'return=minimal'
+      },
+      body:JSON.stringify({
+        player_name:name,
+        game:'Word Search',
+        score:100,
+        time_seconds:elapsed
+      })
+    });
+
+    if(!res.ok) throw new Error(await res.text());
+
+    scoreSubmitted=true;
+    status.textContent='✅ Score submitted to the Cross Paths leaderboard!';
+    btn.textContent='SUBMITTED ✓';
+    input.disabled=true;
+  }catch(err){
+    console.error(err);
+    status.textContent='Could not submit right now. Please check your connection and try again.';
+    btn.disabled=false;
+    btn.textContent='SUBMIT SCORE';
+  }
+}
+
+document.getElementById('submitScoreBtn').addEventListener('click', submitLeaderboardScore);
+
 </script>
 </body>
 </html>
